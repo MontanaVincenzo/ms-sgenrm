@@ -1,0 +1,31 @@
+{
+  "output": "results/speakbench/task_specific/pointwise/B/trained_model.jsonl",
+  "approach": "pointwise",
+  "n_rows": 508,
+  "n_scored": 506,
+  "n_missing_prediction": 0,
+  "n_invalid_prediction": 2,
+  "pairwise_accuracy": 0.5553359683794467,
+  "pairwise_accuracy_excluding_gt_ties": 0.5882352941176471,
+  "gt_preference_distribution": {
+    "tie": 183,
+    "a": 166,
+    "b": 159
+  },
+  "pred_preference_distribution": {
+    "tie": 188,
+    "b": 159,
+    "a": 159
+  },
+  "confusion_matrix": {
+    "gt_a__pred_a": 98,
+    "gt_a__pred_b": 18,
+    "gt_a__pred_tie": 49,
+    "gt_b__pred_a": 18,
+    "gt_b__pred_b": 92,
+    "gt_b__pred_tie": 48,
+    "gt_tie__pred_a": 43,
+    "gt_tie__pred_b": 49,
+    "gt_tie__pred_tie": 91
+  }
+}

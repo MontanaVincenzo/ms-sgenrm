@@ -1,0 +1,62 @@
+[
+  {
+    "role": "system",
+    "content": [
+      {
+        "type": "text",
+        "text": "You are an evaluator of a spoken cascaded ASR -> LLM -> TTS pipeline. You judge a single pipeline for one user turn. You are given the user's spoken request, the ASR transcription the LLM received, the LLM's answer, and the TTS synthesis.\n\nEvaluation Rules:\n1. ASR: Grade transcription accuracy against the user's original spoken request.\n2. LLM: Judge the text answer based strictly on the information available in the ASR transcription, and check if it ultimately serves the user's true intent.\n3. TTS: Evaluate the synthesized audio against the text produced by the LLM. Specifically assess:\n   - Text Fidelity: Any addition, substitution, or omission of words relative to the LLM's text output.\n   - Voice Style & Delivery:\n     * Emotional inversion: Mismatch between the tone/emotion of the audio and the textual sentiment (e.g., cheerful tone during serious news).\n     * Acoustic shift: Sudden or unnatural changes in pitch, timbre, volume, or speaker identity mid-utterance.\n     * Temporal / rhythm shift: Unnatural pacing, awkward pauses, erratic cadence, or robotic phrasing.\n\nReturn ONLY a JSON object with keys: asr_assessment, llm_assessment, tts_assessment, compounding, overall_notes, overall_score.",
+        "audio": null
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "content": [
+      {
+        "type": "text",
+        "text": "Evaluate this pipeline turn and return the evaluation JSON.",
+        "audio": null
+      },
+      {
+        "type": "text",
+        "text": "User's spoken request:",
+        "audio": null
+      },
+      {
+        "type": "audio",
+        "text": null,
+        "audio": "/home/vmontana/synthetic_data_generation/src/data/in_distr/input_audios_original/437_mia.wav"
+      },
+      {
+        "type": "text",
+        "text": "ASR transcription:\nGuide me through a two minute breathing meditation to settle my racing thoughts before an important presentation.",
+        "audio": null
+      },
+      {
+        "type": "text",
+        "text": "LLM answer:\nI will guide you through a two minute breathing meditation to settle my racing thoughts before an important presentation.",
+        "audio": null
+      },
+      {
+        "type": "text",
+        "text": "TTS Synthesis:",
+        "audio": null
+      },
+      {
+        "type": "audio",
+        "text": null,
+        "audio": "/home/vmontana/synthetic_data_generation/src/data/in_distr/output_audio/437_pipeline1_tts.wav"
+      }
+    ]
+  },
+  {
+    "role": "assistant",
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"asr_assessment\": {\n    \"severity\": \"none\",\n    \"meaning_preserved\": true,\n    \"notes\": \"The ASR hypothesis dropped the hyphen in 'two-minute' but preserved the full meaning and intent of the user's request.\"\n  },\n  \"llm_assessment\": {\n    \"answer_coherent\": true,\n    \"answer_hallucinated\": false,\n    \"intent_matches_answer\": false,\n    \"answer_serves_true_need\": false,\n    \"notes\": \"The LLM merely repeated the user's prompt as a declarative statement instead of generating the actual guided meditation content requested by the user.\"\n  },\n  \"tts_assessment\": {\n    \"spoken_severity\": \"none\",\n    \"spoken_meaning_preserved\": true,\n    \"voice_style_matches_expected\": true,\n    \"voice_style_appropriate\": true,\n    \"delivery_serves_true_need\": false,\n    \"notes\": \"The TTS vocalized the LLM's repetitive output perfectly in a soothing voice, but because the underlying answer was just a restatement of the prompt, the user's need for guidance went entirely unmet.\"\n  },\n  \"compounding\": {\n    \"primary_failure_stage\": \"llm\",\n    \"notes\": \"The ASR and TTS stages functioned correctly, but the LLM failed to generate any substantive response, simply echoing the prompt, which caused the entire turn to fail.\"\n  },\n  \"overall_notes\": \"The pipeline completely failed to serve the user's true need because the LLM echoed the request back as a statement rather than delivering the guided meditation instructions.\",\n  \"overall_score\": 1\n}",
+        "audio": null
+      }
+    ]
+  }
+]

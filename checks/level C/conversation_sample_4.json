@@ -1,0 +1,62 @@
+[
+  {
+    "role": "system",
+    "content": [
+      {
+        "type": "text",
+        "text": "You are an evaluator of a spoken cascaded ASR -> LLM -> TTS pipeline. You judge a single pipeline for one user turn. You are given the user's spoken request, the ASR transcription the LLM received, the LLM's answer, and the TTS synthesis.\n\nEvaluation Rules:\n1. ASR: Grade transcription accuracy against the user's original spoken request.\n2. LLM: Judge the text answer based strictly on the information available in the ASR transcription, and check if it ultimately serves the user's true intent.\n3. TTS: Evaluate the synthesized audio against the text produced by the LLM. Specifically assess:\n   - Text Fidelity: Any addition, substitution, or omission of words relative to the LLM's text output.\n   - Voice Style & Delivery:\n     * Emotional inversion: Mismatch between the tone/emotion of the audio and the textual sentiment (e.g., cheerful tone during serious news).\n     * Acoustic shift: Sudden or unnatural changes in pitch, timbre, volume, or speaker identity mid-utterance.\n     * Temporal / rhythm shift: Unnatural pacing, awkward pauses, erratic cadence, or robotic phrasing.\n\nReturn ONLY a JSON object with keys: asr_assessment, llm_assessment, tts_assessment, compounding, overall_notes, overall_score.",
+        "audio": null
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "content": [
+      {
+        "type": "text",
+        "text": "Evaluate this pipeline turn and return the evaluation JSON.",
+        "audio": null
+      },
+      {
+        "type": "text",
+        "text": "User's spoken request:",
+        "audio": null
+      },
+      {
+        "type": "audio",
+        "text": null,
+        "audio": "/home/vmontana/synthetic_data_generation/src/data/in_distr/input_audios_original/1008_mia.wav"
+      },
+      {
+        "type": "text",
+        "text": "ASR transcription:\nGuide me through eating my next meal more mindfully.",
+        "audio": null
+      },
+      {
+        "type": "text",
+        "text": "LLM answer:\nTo eat more mindfully, start by removing distractions like your phone or TV. Before you take the first bite, take a moment to observe the colors and smells of your food. Then, chew slowly and focus entirely on the textures and flavors in each mouthful, noticing how your body feels as you become full.",
+        "audio": null
+      },
+      {
+        "type": "text",
+        "text": "TTS Synthesis:",
+        "audio": null
+      },
+      {
+        "type": "audio",
+        "text": null,
+        "audio": "/home/vmontana/synthetic_data_generation/src/data/in_distr/output_audio/1008_pipeline1_tts.wav"
+      }
+    ]
+  },
+  {
+    "role": "assistant",
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"asr_assessment\": {\n    \"severity\": \"none\",\n    \"meaning_preserved\": true,\n    \"notes\": \"The ASR hypothesis is an exact match to the reference transcription, with no errors or drift in meaning.\"\n  },\n  \"llm_assessment\": {\n    \"answer_coherent\": true,\n    \"answer_hallucinated\": false,\n    \"intent_matches_answer\": true,\n    \"answer_serves_true_need\": true,\n    \"notes\": \"The LLM provides a coherent, actionable guide to mindful eating that directly addresses the user's request for step-by-step guidance.\"\n  },\n  \"tts_assessment\": {\n    \"spoken_severity\": \"minor\",\n    \"spoken_meaning_preserved\": true,\n    \"voice_style_matches_expected\": true,\n    \"voice_style_appropriate\": true,\n    \"delivery_serves_true_need\": true,\n    \"notes\": \"The TTS drops articles, prepositions, and auxiliary verbs (e.g., 'eat' instead of 'To eat', removing 'your', 'the', 'to'), resulting in a telegraphic, somewhat grammatically broken spoken output, though the core instructional meaning remains intact.\"\n  },\n  \"compounding\": {\n    \"primary_failure_stage\": \"tts\",\n    \"notes\": \"While the ASR was perfect and the LLM provided an excellent response, the TTS stage degraded the naturalness and flow of the answer by omitting necessary function words, making it sound robotic and less polished than intended.\"\n  },\n  \"overall_notes\": \"The pipeline successfully serves the user's need for mindful eating advice, but the TTS stage introduces a minor degradation through grammatical truncation that slightly reduces the professional quality of the delivery.\",\n  \"overall_score\": 4\n}",
+        "audio": null
+      }
+    ]
+  }
+]

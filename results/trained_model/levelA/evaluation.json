@@ -1,0 +1,80 @@
+{
+  "input": "data/eval_data.jsonl",
+  "output": "results/trained_model/levelA/trained_model.jsonl",
+  "n_records_in_common": 100,
+  "score_prediction": {
+    "n_pipelines_with_gt": 200,
+    "n_scored": 198,
+    "n_missing_prediction": 2,
+    "n_invalid_prediction": 0,
+    "exact_match_accuracy": 0.48484848484848486,
+    "within_1_accuracy": 0.8484848484848485,
+    "mae": 0.7828282828282829,
+    "rmse": 1.2613124477737825,
+    "mean_error_bias": -0.4696969696969697,
+    "gt_distribution": {
+      "1": 58,
+      "2": 85,
+      "3": 8,
+      "4": 8,
+      "5": 39
+    },
+    "pred_distribution": {
+      "1": 128,
+      "2": 26,
+      "3": 3,
+      "4": 8,
+      "5": 33
+    },
+    "confusion_matrix": {
+      "gt1_pred1": 57,
+      "gt1_pred3": 1,
+      "gt2_pred1": 62,
+      "gt2_pred2": 16,
+      "gt2_pred4": 2,
+      "gt2_pred5": 5,
+      "gt3_pred1": 3,
+      "gt3_pred2": 1,
+      "gt3_pred4": 1,
+      "gt3_pred5": 3,
+      "gt4_pred1": 2,
+      "gt4_pred2": 1,
+      "gt4_pred3": 1,
+      "gt4_pred4": 1,
+      "gt4_pred5": 3,
+      "gt5_pred1": 4,
+      "gt5_pred2": 8,
+      "gt5_pred3": 1,
+      "gt5_pred4": 4,
+      "gt5_pred5": 22
+    },
+    "pearson_r": 0.6903895205435908,
+    "spearman_r": 0.673595609941592
+  },
+  "pairwise_preference": {
+    "n_pairs_with_both_gt": 100,
+    "n_pairs_scored": 98,
+    "pairwise_accuracy": 0.6530612244897959,
+    "pairwise_accuracy_excluding_gt_ties": 0.6805555555555556,
+    "gt_preference_distribution": {
+      "tie": 27,
+      "pipeline1": 44,
+      "pipeline2": 29
+    },
+    "pred_preference_distribution": {
+      "tie": 36,
+      "pipeline1": 37,
+      "pipeline2": 25
+    },
+    "confusion_matrix": {
+      "gt_pipeline1__pred_pipeline1": 29,
+      "gt_pipeline1__pred_tie": 14,
+      "gt_pipeline2__pred_pipeline1": 2,
+      "gt_pipeline2__pred_pipeline2": 20,
+      "gt_pipeline2__pred_tie": 7,
+      "gt_tie__pred_pipeline1": 6,
+      "gt_tie__pred_pipeline2": 5,
+      "gt_tie__pred_tie": 15
+    }
+  }
+}

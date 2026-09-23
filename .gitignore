@@ -1,0 +1,23 @@
+# Environment / caches
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+wandb/
+
+# Model checkpoints / adapters (too large for git)
+qwen-omni-thinker-sft*/
+
+# Audio data (too large for git)
+data/chatbot_arena_spoken_audio/
+data/concatenated_audios/
+data/input_audios_original/
+data/input_audios_perturbed/
+data/output_audio/
+*.wav
+*.mp3
+*.flac
+
+# Backups / logs
+*.bak
+*.log

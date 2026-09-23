@@ -1,0 +1,31 @@
+{
+  "output": "results/speakbench/task_specific/pairwise/A/trained_model.jsonl",
+  "approach": "pairwise",
+  "n_rows": 508,
+  "n_scored": 508,
+  "n_missing_prediction": 0,
+  "n_invalid_prediction": 0,
+  "pairwise_accuracy": 0.5078740157480315,
+  "pairwise_accuracy_excluding_gt_ties": 0.7723076923076924,
+  "gt_preference_distribution": {
+    "tie": 183,
+    "a": 166,
+    "b": 159
+  },
+  "pred_preference_distribution": {
+    "b": 269,
+    "a": 229,
+    "tie": 10
+  },
+  "confusion_matrix": {
+    "gt_a__pred_a": 119,
+    "gt_a__pred_b": 45,
+    "gt_a__pred_tie": 2,
+    "gt_b__pred_a": 26,
+    "gt_b__pred_b": 132,
+    "gt_b__pred_tie": 1,
+    "gt_tie__pred_a": 84,
+    "gt_tie__pred_b": 92,
+    "gt_tie__pred_tie": 7
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "input": "data/eval_data.jsonl",
+  "output": "results/base_model/base_model.jsonl",
+  "n_records_in_common": 100,
+  "score_prediction": {
+    "n_pipelines_with_gt": 200,
+    "n_scored": 185,
+    "n_missing_prediction": 3,
+    "n_invalid_prediction": 12,
+    "exact_match_accuracy": 0.12972972972972974,
+    "within_1_accuracy": 0.3837837837837838,
+    "mae": 3.126864864864865,
+    "rmse": 4.2295925942711685,
+    "mean_error_bias": 2.88145945945946,
+    "gt_distribution": {
+      "1": 50,
+      "2": 79,
+      "3": 8,
+      "4": 8,
+      "5": 40
+    },
+    "pred_distribution": {
+      "0": 4,
+      "1": 10,
+      "2": 16,
+      "3": 6,
+      "4": 90,
+      "5": 4,
+      "6": 2,
+      "7": 2,
+      "8": 1,
+      "10": 50
+    },
+    "confusion_matrix": {
+      "gt1_pred0": 4,
+      "gt1_pred1": 7,
+      "gt1_pred2": 8,
+      "gt1_pred3": 2,
+      "gt1_pred4": 16,
+      "gt1_pred5": 1,
+      "gt1_pred7": 1,
+      "gt1_pred10": 11,
+      "gt2_pred1": 3,
+      "gt2_pred2": 8,
+      "gt2_pred3": 3,
+      "gt2_pred4": 38,
+      "gt2_pred5": 2,
+      "gt2_pred6": 2,
+      "gt2_pred7": 1,
+      "gt2_pred8": 1,
+      "gt2_pred10": 21,
+      "gt3_pred3": 1,
+      "gt3_pred4": 5,
+      "gt3_pred10": 2,
+      "gt4_pred4": 7,
+      "gt4_pred10": 1,
+      "gt5_pred4": 24,
+      "gt5_pred5": 1,
+      "gt5_pred10": 15
+    },
+    "pearson_r": 0.20953765165999994,
+    "spearman_r": 0.2668818006010293
+  },
+  "pairwise_preference": {
+    "n_pairs_with_both_gt": 100,
+    "n_pairs_scored": 86,
+    "pairwise_accuracy": 0.46511627906976744,
+    "pairwise_accuracy_excluding_gt_ties": 0.42857142857142855,
+    "gt_preference_distribution": {
+      "tie": 27,
+      "pipeline1": 44,
+      "pipeline2": 29
+    },
+    "pred_preference_distribution": {
+      "pipeline1": 28,
+      "pipeline2": 21,
+      "tie": 37
+    },
+    "confusion_matrix": {
+      "gt_pipeline1__pred_pipeline1": 16,
+      "gt_pipeline1__pred_pipeline2": 5,
+      "gt_pipeline1__pred_tie": 16,
+      "gt_pipeline2__pred_pipeline1": 7,
+      "gt_pipeline2__pred_pipeline2": 11,
+      "gt_pipeline2__pred_tie": 8,
+      "gt_tie__pred_pipeline1": 5,
+      "gt_tie__pred_pipeline2": 5,
+      "gt_tie__pred_tie": 13
+    }
+  }
+}

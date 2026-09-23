@@ -1,0 +1,24 @@
+{
+  "output": "results/chatbot_arena_spoken/C/trained_model.jsonl",
+  "n_rows": 10,
+  "n_scored": 10,
+  "n_invalid_prediction": 0,
+  "pairwise_accuracy": 0.3,
+  "pairwise_accuracy_excluding_gt_ties": 0.3333333333333333,
+  "gt_preference_distribution": {
+    "a": 4,
+    "b": 5,
+    "tie": 1
+  },
+  "pred_preference_distribution": {
+    "b": 3,
+    "a": 7
+  },
+  "confusion_matrix": {
+    "gt_a__pred_a": 2,
+    "gt_a__pred_b": 2,
+    "gt_b__pred_a": 4,
+    "gt_b__pred_b": 1,
+    "gt_tie__pred_a": 1
+  }
+}
