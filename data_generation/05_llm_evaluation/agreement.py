@@ -1,6 +1,6 @@
 """Judge self-consistency / agreement statistics.
 
-Reads the raw per-pipeline verdict sets dumped by ``single_pipeline.py``
+Reads the raw per-pipeline verdict sets dumped by ``evaluate.py``
 (``--votes-output``, default ``dataset_eval_votes.jsonl``) and reports how often
 the judge's repeated evaluations of the same pipeline agree -- per field and end
 to end -- averaged over the whole dataset.
@@ -135,7 +135,7 @@ def main() -> None:
     parser.add_argument(
         "--votes",
         default="/home/vmontana/synthetic_data_generation/src/data/dataset_eval_votes.jsonl",
-        help="raw verdict sets from single_pipeline.py --votes-output",
+        help="raw verdict sets from evaluate.py --votes-output",
     )
     parser.add_argument(
         "--output",

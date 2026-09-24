@@ -22,3 +22,7 @@ data/output_audio/
 *.bak
 *.log
 train.sh
+*.html
+*.json
+*.jsonl
+run_eval_2gpu.sh

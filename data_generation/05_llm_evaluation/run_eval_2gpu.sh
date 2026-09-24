@@ -2,7 +2,7 @@
 #
 # Data-parallel judge evaluation across 2 GPUs.
 #
-# Splits dataset_tts.jsonl into two halves, runs single_pipeline.py on each half
+# Splits dataset_tts.jsonl into two halves, runs evaluate.py on each half
 # on its own GPU in parallel, then concatenates the shard outputs back into the
 # canonical dataset_eval.jsonl / dataset_eval_votes.jsonl (records are keyed by
 # annotation_id + pipeline, so plain concatenation reconstructs them in order).
@@ -57,7 +57,7 @@ pids=()
 for i in 0 1; do
     g="${GPU_ARR[$i]}"
     echo ">> GPU $g  <-  $WORK/shard0$i.jsonl   (log: $WORK/log0$i.txt)"
-    CUDA_VISIBLE_DEVICES="$g" "${RUN[@]}" "$HERE/single_pipeline.py" \
+    CUDA_VISIBLE_DEVICES="$g" "${RUN[@]}" "$HERE/evaluate.py" \
         --input        "$WORK/shard0$i.jsonl" \
         --output       "$WORK/eval0$i.jsonl" \
         --temperature  "$TEMPERATURE" \
