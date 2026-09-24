@@ -4,3 +4,4 @@ Order of execution is:
 3. `03_llm`
 4. `04_tts`
 5. `05_llm_evaluation`
+5. `06_split_data`
