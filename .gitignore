@@ -26,3 +26,8 @@ train.sh
 *.json
 *.jsonl
 run_eval_2gpu.sh
+run.sh
+data_generation/03_llm/visualize
+data_generation/05_llm_evaluation/visualize
+data
+data_generation/01_input_request/02_tts_synthesis/Orpheus-TTS

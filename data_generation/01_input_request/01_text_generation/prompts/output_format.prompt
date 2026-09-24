@@ -1,0 +1,6 @@
+You must provide the output in json format, as in the following:
+{
+    "request": "Write here the request.",
+    "suitability": "Write here why you think it is suitable.",
+    "ideal_voice": "Write the ideal delivery as a direct instruction to a text-to-speech voice, phrased the way you would prompt a TTS engine (e.g. 'A young woman's voice, warm and unhurried, with gentle downward inflections'). Second person or descriptive, covering speaker sex, approximate age, tone, emotion and pace. Be concise (max 20 words)."
+}

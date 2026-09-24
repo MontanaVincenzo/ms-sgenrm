@@ -13,35 +13,22 @@ from pathlib import Path
 from functools import partial
 import json
 import wandb
-from peft import PeftModel, LoraConfig, get_peft_model, TaskType
+import yaml
+import sys
 
-def load_model(model_id, checkpoint_dir, device):
+def load_model(model_id, device):
 
     # 1. Load base model directly onto this process's GPU
     model = Qwen2_5OmniThinkerForConditionalGeneration.from_pretrained(
         model_id,
         torch_dtype=torch.bfloat16,
         device_map={"": device},
-        **({"local_files_only": True} if checkpoint_dir is not None else {}),
     )
     model.config.use_cache = False
 
-    # 2. Load LoRA adapter on top of the base model (skipped when starting from base).
-    #    is_trainable=True so an SFT adapter can be fine-tuned in place under --train_lm
-    #    (PeftModel.from_pretrained otherwise loads it in inference_mode).
-    if checkpoint_dir is not None:
-        model = PeftModel.from_pretrained(
-            model,
-            checkpoint_dir,
-            is_trainable=True,
-            device_map={"": device},
-        )
 
     # 3. Load processor
-    processor = Qwen2_5OmniProcessor.from_pretrained(
-        checkpoint_dir if checkpoint_dir is not None else model_id,
-        **({"local_files_only": True} if checkpoint_dir is not None else {}),
-    )
+    processor = Qwen2_5OmniProcessor.from_pretrained(model_id)
 
     return model, processor
 
@@ -150,51 +137,15 @@ def main(args):
     ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
     accelerator = Accelerator(mixed_precision="bf16", log_with="wandb", gradient_accumulation_steps=args.gradient_accumulation_steps, kwargs_handlers=[ddp_kwargs])
 
-    model, processor = load_model(args.model_id, args.adapter_path, accelerator.local_process_index)
+    model, processor = load_model(args.model_id, accelerator.local_process_index)
 
     model.config.use_cache = False
 
-    # Optionally fine-tune the LM backbone via LoRA
-    if args.train_lm:
-        if isinstance(model, PeftModel):
-            # An SFT adapter is already loaded (and active) — continue fine-tuning it
-            # in place rather than stacking a second, separate adapter on top of it.
-            # Its LoRA params get unfrozen in BradleyTerryRewardModel; --lora_rank/
-            # --lora_alpha/--lora_dropout/--lora_target_modules are the SFT adapter's
-            # own config and are not reapplied here.
-            accelerator.print(
-                "--train_lm: continuing to fine-tune the already-loaded SFT adapter in place "
-                "(--lora_rank/--lora_alpha/--lora_dropout/--lora_target_modules are ignored — "
-                "the SFT adapter's own LoRA config applies)."
-            )
-        else:
-            lora_config = LoraConfig(
-                r=args.lora_rank,
-                lora_alpha=args.lora_alpha,
-                lora_dropout=args.lora_dropout,
-                target_modules=args.lora_target_modules.split(","),
-                bias="none",
-                task_type=TaskType.CAUSAL_LM,
-            )
-            model = get_peft_model(model, lora_config)
+    rm = BradleyTerryRewardModel(model)
 
-        # Gradient checkpointing only helps when the backbone actually backprops.
-        # enable_input_require_grads() is required so gradients reach the LoRA
-        # params through a checkpointed, otherwise-frozen backbone.
-        model.gradient_checkpointing_enable(
-            gradient_checkpointing_kwargs={"use_reentrant": False}
-        )
-        model.enable_input_require_grads()
-
-    rm = BradleyTerryRewardModel(model, train_lm=args.train_lm)
-
-    # Optimizer covers the reward head and, when train_lm=True, the LoRA params too.
-    # LoRA params use a separate (lower) lr to avoid disturbing pretrained representations.
-    head_params = [p for n, p in rm.named_parameters() if p.requires_grad and "lora_" not in n]
-    lora_params  = [p for n, p in rm.named_parameters() if p.requires_grad and "lora_" in n]
+    head_params = [p for n, p in rm.named_parameters() if p.requires_grad]
     param_groups = [{"params": head_params}]
-    if lora_params:
-        param_groups.append({"params": lora_params, "lr": args.lm_lr})
+
     optimizer = torch.optim.AdamW(
         param_groups,
         lr=args.lr,
@@ -241,10 +192,6 @@ def main(args):
             "lr": args.lr,
             "batch_size": args.batch_size,
             "mixed_precision": "bf16",
-            "train_lm": args.train_lm,
-            "lora_rank": args.lora_rank if args.train_lm else None,
-            "lora_alpha": args.lora_alpha if args.train_lm else None,
-            "lora_target_modules": args.lora_target_modules if args.train_lm else None,
             "model_name": args.model_id,
             "num_epochs": args.num_epochs,
             "label_smoothing": args.label_smoothing,
@@ -326,13 +273,6 @@ def main(args):
             ckpt_path.parent.mkdir(parents=True, exist_ok=True)
             torch.save(unwrapped_ckpt.head.state_dict(), ckpt_path)
             accelerator.print(f"Epoch {epoch + 1} checkpoint saved to {ckpt_path}")
-            if args.train_lm:
-                lm_ckpt_path = output_path / f"lm_lora_epoch{epoch + 1}"
-                unwrapped_ckpt.lm.save_pretrained(lm_ckpt_path)
-                accelerator.print(
-                    f"Epoch {epoch + 1} LM LoRA checkpoint saved to {lm_ckpt_path} "
-                    f"(adapter: {list(unwrapped_ckpt.lm.peft_config.keys())})"
-                )
 
         eval_metrics = evaluate(rm, eval_dataloader, accelerator)
         accelerator.log(eval_metrics, step=(epoch + 1) * len(dataloader))
@@ -346,12 +286,6 @@ def main(args):
                 best_dir = output_path / "best"
                 best_dir.mkdir(parents=True, exist_ok=True)
                 torch.save(unwrapped_ckpt.head.state_dict(), best_dir / "bt_reward_head.pt")
-                if args.train_lm:
-                    unwrapped_ckpt.lm.save_pretrained(best_dir / "lm_lora_adapter")
-                    accelerator.print(
-                        f"Best LM LoRA adapter saved to {best_dir / 'lm_lora_adapter'} "
-                        f"(adapter: {list(unwrapped_ckpt.lm.peft_config.keys())})"
-                    )
                 with open(best_dir / "metrics.json", "w") as f:
                     json.dump({"epoch": epoch + 1, **eval_metrics}, f, indent=2)
                 accelerator.print(
@@ -369,33 +303,37 @@ def main(args):
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
-    parser.add_argument("--input_file", required=True, help="jsonl file path")
-    parser.add_argument("--model_id", type=str, default="Qwen/Qwen2.5-Omni-7B", help="Id of the model")
-    parser.add_argument("--audio_dir", default=None, help="Dir path of the audios")
-    parser.add_argument("--eval_file", type=str, required=True, help="jsonl file for per-epoch evaluation")
-    parser.add_argument("--output_path", required=True, help="Checkpoint output folder")
-    parser.add_argument("--num_workers", type=int, default=4, help="DataLoader worker processes.")
-    parser.add_argument("--num_epochs", type=int, default=3)
-    parser.add_argument("--batch_size", type=int, default=16)
-    parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
-    parser.add_argument("--lr", type=float, default=1e-4)
-    parser.add_argument("--label_smoothing", type=float, default=0.1,
-                        help="Label smoothing for BT loss (0 = standard, 0.1 = recommended)")
-    parser.add_argument("--warmup_steps", type=int, default=25,
-                        help="Linear LR warmup steps before cosine decay begins.")
-    parser.add_argument("--adapter_path", type=str, default=None,
-                        help="Path to a local SFT LoRA adapter. If omitted, the base model is "
-                             "loaded from HuggingFace and only the reward head is trained.")
-    parser.add_argument("--train_lm", action="store_true",
-                        help="Fine-tune the LM backbone via LoRA in addition to the reward head.")
-    parser.add_argument("--lora_rank", type=int, default=16, help="LoRA rank (r).")
-    parser.add_argument("--lora_alpha", type=int, default=32, help="LoRA alpha scaling factor.")
-    parser.add_argument("--lora_dropout", type=float, default=0.05, help="LoRA dropout probability.")
-    parser.add_argument("--lora_target_modules", type=str, default="q_proj,k_proj,v_proj,o_proj",
-                        help="Comma-separated list of module names to apply LoRA to.")
-    parser.add_argument("--lm_lr", type=float, default=5e-6,
-                        help="Learning rate for the LoRA adapter parameters (default: 5e-6).")
-
+    parser.add_argument("--config_path", required=True)
+       
     args = parser.parse_args()
+
+    try:
+        with open(args.config_path, 'r') as f:
+            config = yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"Error: Config file '{args.config_path}' not found", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"Error parsing YAML file: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    bt_config = config["bradley_terry"]
+    required = ["seed", "model_id", "output_path", "num_workers", "num_epochs",
+                "batch_size", "gradient_accumulation_steps", "lr", "label_smoothing", "warmup_steps"]
+    missing = [k for k in required if k not in bt_config]
+    if missing:
+        print(f"Error: missing keys in 'bradley_terry' section of {args.config_path}: {missing}", file=sys.stderr)
+        sys.exit(1)
+    for key in required:
+        setattr(args, key, bt_config[key])
+    # Relative paths (data_dir, and the audio paths stored in the jsonl, e.g. "data/input_audios_original/x.wav")
+    # are relative to the repo root, i.e. the folder containing config.yaml -- not to data_dir.
+    repo_root = Path(args.config_path).resolve().parent
+    data_dir = repo_root / config["data_generation"]["data_dir"]
+    setattr(args, "input_file", data_dir / config["data_generation"]["split"]["train_file"])
+    setattr(args, "eval_file", data_dir / config["data_generation"]["split"]["eval_file"])
+    setattr(args, "audio_dir", repo_root)
+
+    args.lr = float(args.lr)
+    args.label_smoothing = float(args.label_smoothing)
     main(args)

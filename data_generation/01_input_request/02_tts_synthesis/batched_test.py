@@ -14,9 +14,9 @@ import yaml
 from vllm import SamplingParams
 import os
 
-from orpheus_tts_pypi.orpheus_tts import OrpheusModel
+from orpheus_tts import OrpheusModel
 # reuse the already-loaded SNAC model + its device from the package
-from orpheus_tts_pypi.orpheus_tts.decoder import model as snac_model, snac_device
+from orpheus_tts.decoder import model as snac_model, snac_device
 
 # Orpheus end-of-speech / end-of-turn tokens (49158 in engine_class.py is a bug: it's a text token)
 STOP_TOKEN_IDS = [128258, 128009]

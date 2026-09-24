@@ -59,6 +59,10 @@ build_env() {
       echo "    WARNING: vllm-omni checkout not found at $VLLM_OMNI_SRC; set VLLM_OMNI_SRC and rerun with FORCE=1" >&2
     fi
   fi
+  if [[ "$name" == orpheus ]]; then
+    # Local copy of the orpheus_tts package (importable as `orpheus_tts`)
+    uv pip install --python "$venv/bin/python" --no-deps -e "$ROOT/data_generation/01_input_request/02_tts_synthesis/Orpheus-TTS/orpheus_tts_pypi"
+  fi
   echo "    done"
 }
 

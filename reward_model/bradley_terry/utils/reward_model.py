@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from transformers import Qwen2_5OmniThinkerForConditionalGeneration, Qwen2_5OmniProcessor
-from peft import PeftModel
 
 class BradleyTerryRewardModel(nn.Module):
     """
@@ -17,10 +16,9 @@ class BradleyTerryRewardModel(nn.Module):
         loss = -F.logsigmoid(rewards_chosen - rewards_rejected).mean()
     """
 
-    def __init__(self, base_lm: Qwen2_5OmniThinkerForConditionalGeneration, train_lm: bool = False):
+    def __init__(self, base_lm: Qwen2_5OmniThinkerForConditionalGeneration):
         super().__init__()
         self.lm = base_lm
-        self.train_lm = train_lm
 
         hidden_size = base_lm.config.text_config.hidden_size
 
@@ -30,11 +28,6 @@ class BradleyTerryRewardModel(nn.Module):
         for param in self.lm.parameters():
             param.requires_grad = False
 
-        # When fine-tuning the LM via LoRA, unfreeze only the LoRA parameters
-        if train_lm:
-            for name, param in self.lm.named_parameters():
-                if "lora_" in name:
-                    param.requires_grad = True
 
         self.head = self.head.to(dtype=torch.bfloat16)
 
@@ -78,19 +71,12 @@ class BradleyTerryRewardModel(nn.Module):
         return target
 
     def forward(self, inputs: dict) -> torch.Tensor:
-        if self.train_lm:
+        with torch.no_grad():
             outputs = self.lm(
                 **inputs,
                 output_hidden_states=True,
                 return_dict=True,
             )
-        else:
-            with torch.no_grad():
-                outputs = self.lm(
-                    **inputs,
-                    output_hidden_states=True,
-                    return_dict=True,
-                )
 
         hidden = outputs.hidden_states[-1]  # (B, T, hidden_size)
 
@@ -106,35 +92,5 @@ class BradleyTerryRewardModel(nn.Module):
     
     def train(self, mode: bool = True):
         super().train(mode)
-        if not self.train_lm:
-            # Keep the LM frozen in eval mode to avoid BatchNorm/dropout side-effects
-            self.lm.eval()
+        self.lm.eval()
         return self
-
-if __name__ == "__main__":
-    base_model_id = "/leonardo_work/IscrC_MSMU/models/Qwen2.5-Omni-7B"
-    adapter_path = "/leonardo_work/IscrC_MSMU/vmontana/amazon/speech_judge_sft/code/speechjudge_qwen_omni_thinker_lora"
-    processor = Qwen2_5OmniProcessor.from_pretrained(
-        adapter_path,
-        local_files_only=True,
-    )
-    base_lm = Qwen2_5OmniThinkerForConditionalGeneration.from_pretrained(
-        base_model_id,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-        local_files_only=True,
-    )
-
-    base_lm = PeftModel.from_pretrained(
-        base_lm,
-        adapter_path,
-    )
-
-    print(base_lm.config.text_config.hidden_size)
-
-    rm = BradleyTerryRewardModel(base_lm=base_lm)
-    
-    print("Reward model created successfully.")
-    trainable = sum(p.numel() for p in rm.parameters() if p.requires_grad)
-    total = sum(p.numel() for p in rm.parameters())
-    print(f"Trainable params: {trainable:,} / {total:,} ({100 * trainable / total:.4f}%)") 

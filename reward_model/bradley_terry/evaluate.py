@@ -8,11 +8,12 @@ from utils.prepare_data import PairDataset, build_inputs
 from torch.utils.data import DataLoader
 import torch.nn.functional as F
 from pathlib import Path
-from peft import PeftModel
 import json
+import sys
+import yaml
 
 
-def load_model(model_id, checkpoint_dir, device):
+def load_model(model_id):
     # 1. Load base model
     model = Qwen2_5OmniThinkerForConditionalGeneration.from_pretrained(
         model_id,
@@ -129,15 +130,15 @@ def main(args):
     device_idx = 0 if torch.cuda.is_available() else "cpu"
     device = torch.device(f"cuda:{device_idx}" if isinstance(device_idx, int) else device_idx)
 
-    print(f"Loading model from {args.adapter_path} on {device} ...")
-    model, processor = load_model(args.model_id, args.adapter_path, device_idx)
+    print(f"Loading model {args.model_id} on {device} ...")
+    model, processor = load_model(args.model_id)
     model.config.use_cache = False
     model = model.to(device)
 
     for p in model.parameters():
         p.requires_grad = False
 
-    rm = BradleyTerryRewardModel(model, train_lm=args.train_lm)
+    rm = BradleyTerryRewardModel(model)
 
     print(f"Loading reward head from {args.reward_head_path} ...")
     state_dict = torch.load(args.reward_head_path, map_location=device)
@@ -178,38 +179,45 @@ def main(args):
         }
         Path(args.output_file).parent.mkdir(parents=True, exist_ok=True)
         with open(args.output_file, "w") as f:
-            json.dump(output, f, indent=2)
+            json.dump(output, f, indent=2, default=str)  # default=str: args holds Path objects
         print(f"Per-pair results saved to {args.output_file}")
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--input_file", required=True, help="Test jsonl file path")
-    parser.add_argument("--model_id", type=str, default="Qwen/Qwen2.5-Omni-7B", help="Id of the model")
-    parser.add_argument("--audio_dir", help="Dir path of the audios")
-    parser.add_argument("--adapter_path", default=None,
-                        help="Path to the LoRA adapter checkpoint to evaluate: the SFT checkpoint for a "
-                             "heads-only run, or the trained lm_lora_epoch*/lm_lora_adapter checkpoint for "
-                             "a --train_lm run. train.py continues the SFT adapter in place rather than "
-                             "stacking a second one, so the saved checkpoint is already the complete "
-                             "adapter — there is nothing separate to load on top of it.")
-    parser.add_argument("--reward_head_path", required=True, help="Path to the trained BT reward head .pt file")
-    parser.add_argument("--batch_size", type=int, default=4)
-    parser.add_argument("--num_workers", type=int, default=4)
-    parser.add_argument("--train_lm", action="store_true",
-                        help="Whether the checkpoint being evaluated was trained with --train_lm. Metadata "
-                             "only — evaluation never backpropagates, so it doesn't change the forward pass.")
-    parser.add_argument(
-        "--output_file",
-        type=str,
-        default=None,
-        help="Optional JSON file path to save per-pair rewards and summary",
-    )
-    parser.add_argument(
-        "--sft_dataset",
-        type=str,
-        default=None,
-        help="Name of the SFT dataset the checkpoint was trained on (for logging/metadata)",
-    )
+    parser.add_argument("--config_path", required=True)
+    parser.add_argument("--split", choices=["train", "eval", "val"], default="val",
+                        help="Which split from data_generation.split to evaluate on (default: the held-out val split)")
+    parser.add_argument("--reward_head_path", default=None,
+                        help="Reward head .pt to evaluate (default: <bradley_terry.output_path>/best/bt_reward_head.pt)")
     args = parser.parse_args()
+
+    try:
+        with open(args.config_path, 'r') as f:
+            config = yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"Error: Config file '{args.config_path}' not found", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"Error parsing YAML file: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    bt_config = config["bradley_terry"]
+    required = ["model_id", "output_path", "eval_output_file", "batch_size", "num_workers"]
+    missing = [k for k in required if k not in bt_config]
+    if missing:
+        print(f"Error: missing keys in 'bradley_terry' section of {args.config_path}: {missing}", file=sys.stderr)
+        sys.exit(1)
+
+    # Relative paths are relative to the repo root (the folder containing config.yaml), as in train.py.
+    repo_root = Path(args.config_path).resolve().parent
+    data_dir = repo_root / config["data_generation"]["data_dir"]
+    args.model_id = bt_config["model_id"]
+    args.batch_size = bt_config["batch_size"]
+    args.num_workers = bt_config["num_workers"]
+    args.input_file = data_dir / config["data_generation"]["split"][f"{args.split}_file"]
+    args.audio_dir = repo_root
+    args.reward_head_path = (Path(args.reward_head_path) if args.reward_head_path
+                             else repo_root / bt_config["output_path"] / "best" / "bt_reward_head.pt")
+    args.output_file = repo_root / bt_config["eval_output_file"]
     main(args)

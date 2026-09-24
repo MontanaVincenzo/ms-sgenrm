@@ -11,9 +11,11 @@ from pathlib import Path
 import sys
 import yaml
 
-with open('templates/topic.prompt', 'r') as f:
+PROMPTS_DIR = Path(__file__).resolve().parent / "prompts" 
+
+with open(PROMPTS_DIR / 'topic.prompt', 'r') as f:
     PROMPT_TOPIC = f.read()
-with open('templates/output_format.prompt', 'r') as f:
+with open(PROMPTS_DIR / 'output_format.prompt', 'r') as f:
     PROMPT_OUTPUT_FORMAT = f.read()
 
 REQUEST_SCHEMA = {
