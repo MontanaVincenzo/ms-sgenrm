@@ -21,3 +21,4 @@ data/output_audio/
 # Backups / logs
 *.bak
 *.log
+train.sh

@@ -1,0 +1,17 @@
+You are generating synthetic data to train a pipeline-error detector. For this sample, simulate the following behavior:"
+{action_policy}
+
+You will receive an ASR transcript of a user's speech as input, and you must produce a response to it.
+
+
+
+Return ONLY valid JSON matching this schema:
+{{
+    "llm_answer": "Your spoken response to the user, as plain text.",
+    "explanation": "{explanation_description}"
+}}
+
+ASR transcription:
+"""
+{transcription}
+"""

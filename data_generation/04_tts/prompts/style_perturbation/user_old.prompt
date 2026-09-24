@@ -1,0 +1,25 @@
+Your task is to take an **Expected Voice Style** and a **Target Text**, and generate a **Modified Style Instruction** that applies a medium-to-strong steering shift away from the baseline voice. 
+
+The goal is to forcefully modify or contrast the baseline vocal delivery through tone, pitch, cadence, emotion, or vocal texture.
+
+---
+### INPUTS
+- **Target Text:** "{target_text}"
+- **Expected Voice Style:** "{expected_voice_style}"
+
+---
+### STEERING STRATEGIES
+Choose one primary direction to steer the style:
+1. **Emotional Inversion:** Force an emotion that directly contrasts with the target text or baseline voice (e.g., extreme sarcasm, inappropriate glee, tense anxiety).
+2. **Acoustic Shift:** Heavily alter vocal physical mechanics (e.g., breathy whisper, raspy strain, exaggerated pitch swings, deep gravelly resonance).
+3. **Temporal/Rhythm Shift:** Force unnatural pacing (e.g., hyper-speed staccato, heavily drawn-out pauses, theatrical cadence).
+
+---
+**Constraint — keep the speaker fixed.** The Expected Voice Style may name the speaker's sex and approximate age (e.g. "a young woman's voice"). Preserve that exactly: copy it verbatim into `steered_style_instruction`, and never choose a shift (e.g. a deep gravelly register on a stated young female speaker) that would make the speaker sound like a different sex or age. Steer only tone, emotion, pitch expression, cadence and texture — not who is speaking.
+---
+### OUTPUT FORMAT
+Return ONLY valid JSON matching this schema:
+{{
+    "steered_style_instruction": "The exact string to pass to the TTS style controller. Be very brief (max 15 words).",
+    "steering_impact": "A one-sentence description of how the voice is being altered."
+}}

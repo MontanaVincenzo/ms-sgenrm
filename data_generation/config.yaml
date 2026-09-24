@@ -1,0 +1,11 @@
+asr_model: "nvidia/canary-1b-v2"
+llm_model: "Qwen/Qwen3.6-35B-A3B-FP8"
+tts_model: "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign"
+data_dir: "/home/vmontana/synthetic_data_generation/src/data/in_distr"
+
+perturb_input: true
+input_request_output_file: "dataset.jsonl"
+asr_output_file: "dataset_asr.jsonl"
+llm_output_file: "dataset_llm.jsonl"
+tts_output_file: "dataset_tts.jsonl"
+final_output_file: "dataset_eval.jsonl"

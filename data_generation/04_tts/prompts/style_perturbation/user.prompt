@@ -1,0 +1,24 @@
+Your task is to take a **Target Text**, and generate a **Style Instruction** that applies a medium-to-strong steering shift away from a voice style aligned with the text. 
+
+The goal is to forcefully modify or contrast the expected vocal delivery through tone, pitch, cadence, emotion, or vocal texture.
+
+---
+### INPUTS
+- **Target Text:** "{target_text}"
+
+---
+### STEERING STRATEGIES
+Choose **one and only one** of the following direction to steer the style:
+1. **Emotional Inversion:** Force an emotion that directly contrasts with the target text content. Select the emotion from the following pool: happiness, sadness, fear, anger, surprise, disgust.
+2. **Acoustic Shift:** Heavily alter vocal physical mechanics (e.g., breathy whisper, raspy strain, exaggerated pitch swings, deep gravelly resonance).
+3. **Temporal/Rhythm Shift:** Force unnatural pacing (e.g., hyper-speed staccato, heavily drawn-out pauses, theatrical cadence).
+
+---
+**Constraint — Always provide information about speaker's age and sex along with the style perturbation.**
+---
+### OUTPUT FORMAT
+Return ONLY valid JSON matching this schema:
+{{
+    "steered_style_instruction": "The exact string to pass to the TTS style controller. Be very brief (max 15 words).",
+    "steering_impact": "A one-sentence description of how the voice is being altered."
+}}

@@ -1,0 +1,17 @@
+Your task is to modify a given **Target Text** that will be fed to a TTS as input.
+
+---
+### TARGET TEXT:
+"{target_text}"
+
+---
+### INSTRUCTIONS
+{perturbation_instruction}
+
+---
+### OUTPUT FORMAT
+Return ONLY valid JSON matching this schema:
+{{
+    "perturbed_text": "The modified text string to pass into the TTS.",
+    "steering_impact": "A one-sentence description of what was added or omitted."
+}}

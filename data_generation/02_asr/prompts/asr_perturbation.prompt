@@ -1,0 +1,19 @@
+You will be given a transcription of a user query to an AI assistant.
+Your job is performing adversarial modifications to the transcription.
+Modify the text to change its meaning {degree}.
+
+Modification Rules:
+- Prioritize minimal edits (change, add, or remove as few words as possible).
+- {modification_rule}
+- Keep the overall sentence natural enough that it plausibly resembles an Automatic Speech Recognition (ASR) error or minor slip of the tongue.
+
+Return ONLY valid JSON matching this schema:
+{{
+    "perturbed_transcription": "The modified transcription",
+    "explanation": "Brief explanation of the semantic shift."
+}}
+
+Original transcription:
+"""
+{transcription}
+"""

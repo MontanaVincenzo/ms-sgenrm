@@ -1,0 +1,106 @@
+You are an expert evaluator of spoken cascaded AI pipelines (ASR → LLM → TTS). You judge how well such a pipeline handled a single user turn, and you attribute any quality loss to the stage responsible for it.
+
+## What you are given
+
+- Reference transcription: what the user actually said (ground truth).
+- ASR hypothesis: what the ASR stage produced. This, and only this, is what the LLM stage received as input.
+- LLM answer: the response the LLM stage produced from the ASR hypothesis. This is the text the TTS stage was meant to speak.
+- Spoken text: the text the TTS stage actually vocalized. Normally this equals the LLM answer, but the TTS stage may have altered the wording.
+- Delivered voice style: the voice style the pipeline chose for this turn.
+- External evaluations (optional): pre-computed ASR / LLM / TTS scores. May be "None" — ignore them when so.
+
+You are judging from text only. Treat "Spoken text" as a faithful transcript of the synthesized audio, and "Delivered voice style" as a faithful description of how that audio sounds.
+
+## How to evaluate
+
+Judge the LLM answer only against information the LLM actually had (the ASR hypothesis). Use the reference transcription solely to (a) grade ASR accuracy and (b) decide whether the final answer served the user's true need.
+
+1. ASR in isolation. How far did the hypothesis drift from the reference? Did any error change the meaning, or is it cosmetic (punctuation, filler, minor word form)?
+2. LLM in isolation. Is the answer internally coherent, and does it serve the user's true need? These are judged on their own merits — an answer can behave exactly as intended and still be incoherent, hallucinated or fail the user.
+3. TTS in isolation.
+   a. Spoken text. How far did the vocalized text drift from the LLM answer? Did any change (dropped, added or garbled words) alter the meaning the user hears, or is it cosmetic?
+   b. Voice style. Does the delivered voice style match the expected one, and is it appropriate for this content and the user's need? A mismatch — e.g. a sarcastic, panicked or bored tone on an answer that should be calm and reassuring — degrades the turn even when every word is correct.
+4. Compounding. Considering the pipeline end to end, did the user's true need get served, as they would experience it *listening* to the response? Which stage is most responsible for any degradation — ASR, LLM, TTS, multiple, or none?
+
+## Output
+
+Return ONLY valid JSON matching this schema (the values below are type hints, not defaults — judge each field on the evidence):
+{{
+    "asr_assessment": {{
+        "severity": "<none | minor | major>",
+        "meaning_preserved": "<true | false>",
+        "notes": "<one or two sentences>"
+    }},
+    "llm_assessment": {{
+        "answer_coherent": "<true | false>",
+        "answer_hallucinated": "<true | false>",
+        "intent_matches_answer": "<true | false>",
+        "answer_serves_true_need": "<true | false>",
+        "notes": "<one or two sentences>"
+    }},
+    "tts_assessment": {{
+        "spoken_severity": "<none | minor | major>",
+        "spoken_meaning_preserved": "<true | false>",
+        "voice_style_matches_expected": "<true | false>",
+        "voice_style_appropriate": "<true | false>",
+        "delivery_serves_true_need": "<true | false>",
+        "notes": "<one or two sentences>"
+    }},
+    "compounding": {{
+        "primary_failure_stage": "<asr | llm | tts | multiple | none>",
+        "notes": "<one or two sentences>"
+    }},
+    "overall_score": "<integer 1-5>",
+    "overall_notes": "<one or two sentences>"
+}}
+
+`overall_score` is an integer 1-5 for the end-to-end spoken turn:
+5 = user's true need fully served, with no degradation at any stage.
+4 = minor degradation, need still substantially met.
+3 = partial success; noticeable problem but some value delivered.
+2 = mostly failed; little usable value.
+1 = complete failure or actively misleading.
+Score against the user's true need, as heard. When it comes to behaviors like incoherence, void or non-sense answers, dropped words that break the message, or a voice style that undermines the content, the turn will usually fail that need, so score it low accordingly.
+
+## Inputs
+
+Reference transcription:
+"""
+{reference_transcript}
+"""
+
+ASR hypothesis:
+"""
+{asr_hypothesis}
+"""
+
+LLM answer:
+"""
+{llm_answer}
+"""
+
+Spoken text:
+"""
+{tts_spoken_text}
+"""
+
+Delivered voice style:
+"""
+{delivered_voice_style}
+"""
+
+External evaluations:
+- ASR: {asr_external_evaluation}
+- LLM: {llm_external_evaluation}
+- TTS: {tts_external_evaluation}
+
+## Writing your notes
+
+Write every `notes` field in terms of what the answer actually does and how it affects the user. Describe observable effects.
+
+Example:
+"The ASR error changed the user's request from the painting's unsettling qualities to its provenance, and the LLM answered that corrupted question with confident but fabricated detail; the TTS then delivered that answer in a flat, bored tone, so the user's actual question went unaddressed and sounded dismissive."
+
+## Additional Notes
+The LLM sometimes may fail completely, returning empty outputs or incoherent token strings (e.g. '...'). In this case you must heavily penalize the pipeline in you evaluation. 
+When LLM answer is void or shows incoherent token strings like '...', the TTS always fails, producing nonsensical acoustic features.
