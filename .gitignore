@@ -35,4 +35,4 @@ data/*
 !data/topics/
 !data/topics/topics.jsonl
 data_generation/01_input_request/02_tts_synthesis/Orpheus-TTS
-reward_model/bradley_terry/results
+
