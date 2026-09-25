@@ -16,6 +16,7 @@ the modal score (majority voting). The full set of raw verdicts is dumped to
 """
 
 import json
+import os
 import random
 import statistics
 import sys
@@ -379,11 +380,13 @@ def main(args) -> None:
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--config_path", required=True)
+    parser.add_argument("--input", default=None, help="override the input (default: <data_dir>/<tts_output_file>)")
+    parser.add_argument("--output", default=None, help="override the output (default: <data_dir>/<final_output_file>)")
     parser.add_argument(
         "--votes-output",
         default=None,
         help="raw per-pipeline verdict sets, consumed by agreement.py "
-             "(default: <data_dir>/dataset_eval_votes.jsonl)",
+             "(default: <data_dir>/<votes_output_file>)",
     )
     parser.add_argument("--limit", type=int, default=None, help="evaluate only the first N samples")
     parser.add_argument("--votes", type=int, default=10, help="judge samples per pipeline for majority voting")
@@ -404,11 +407,17 @@ if __name__ == "__main__":
         print(f"Error parsing YAML file: {e}", file=sys.stderr)
         sys.exit(1)
 
+    # Command-line paths are relative to where you launch from, so resolve them before switching folder.
+    overrides = {k: Path(getattr(args, k)).resolve() for k in ("input", "output", "votes_output") if getattr(args, k)}
+
+    # Paths in the config and in the dataset are relative to the repo root.
+    os.chdir(Path(args.config_path).resolve().parent)
+    config = config["data_generation"]
+
     data_dir = Path(config["data_dir"])
-    args.input = data_dir / config["tts_output_file"]
-    args.output = data_dir / config["final_output_file"]
+    args.input = overrides.get("input", data_dir / config["tts_output_file"])
+    args.output = overrides.get("output", data_dir / config["final_output_file"])
+    args.votes_output = overrides.get("votes_output", data_dir / config["votes_output_file"])
     args.llm_model = config["llm_model"]
-    if args.votes_output is None:
-        args.votes_output = data_dir / "dataset_eval_votes.jsonl"
 
     main(args)

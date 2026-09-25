@@ -11,27 +11,37 @@
 #     ./run_eval_2gpu.sh --votes 10 --temperature 0.7
 # Note: --limit is applied per shard (so --limit 100 -> ~200 pipelines total).
 #
-# Overridable via env: PYTHON, INPUT, EVAL_OUT, VOTES_OUT, GPUS ("0 1").
+# Default paths come from config.yaml (data_generation section).
+# Overridable via env: CONFIG, PYTHON, INPUT, EVAL_OUT, VOTES_OUT, GPUS ("0 1").
 #
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
-DATA="$REPO/src/data"
+CONFIG="$(realpath "${CONFIG:-$REPO/config.yaml}")"
 TEMPERATURE=1.0
 
-# How to invoke python: `uv run` against the repo venv (the box has no
-# pyproject.toml, so pin the interpreter explicitly). Override with
+# How to invoke python: the data_generation venv. Override with
 # PYTHON="/path/to/python" or PYTHON="uv run ... python".
 if [[ -n "${PYTHON:-}" ]]; then
     read -r -a RUN <<< "$PYTHON"
 else
-    RUN=(uv run --no-project --python "$REPO/.venv/bin/python" python)
+    RUN=("$REPO/data_generation/.venv/bin/python")
 fi
 
-INPUT="${INPUT:-$DATA/dataset_tts.jsonl}"
-EVAL_OUT="${EVAL_OUT:-$DATA/dataset_eval.jsonl}"
-VOTES_OUT="${VOTES_OUT:-$DATA/dataset_eval_votes.jsonl}"
+# data_dir and file names from the config (relative paths are relative to the config's folder)
+read -r DATA CFG_INPUT CFG_EVAL CFG_VOTES < <("${RUN[@]}" -c '
+import sys, yaml
+from pathlib import Path
+cfg_path = Path(sys.argv[1])
+c = yaml.safe_load(cfg_path.read_text())["data_generation"]
+data = (cfg_path.parent / c["data_dir"]).resolve()
+print(data, data / c["tts_output_file"], data / c["final_output_file"], data / c["votes_output_file"])
+' "$CONFIG")
+
+INPUT="${INPUT:-$CFG_INPUT}"
+EVAL_OUT="${EVAL_OUT:-$CFG_EVAL}"
+VOTES_OUT="${VOTES_OUT:-$CFG_VOTES}"
 
 GPUS="${GPUS:-0 1}"
 read -r -a GPU_ARR <<< "$GPUS"
@@ -58,6 +68,7 @@ for i in 0 1; do
     g="${GPU_ARR[$i]}"
     echo ">> GPU $g  <-  $WORK/shard0$i.jsonl   (log: $WORK/log0$i.txt)"
     CUDA_VISIBLE_DEVICES="$g" "${RUN[@]}" "$HERE/evaluate.py" \
+        --config_path  "$CONFIG" \
         --input        "$WORK/shard0$i.jsonl" \
         --output       "$WORK/eval0$i.jsonl" \
         --temperature  "$TEMPERATURE" \
@@ -90,4 +101,4 @@ echo ">> done"
 echo "   $EVAL_OUT   : $(wc -l < "$EVAL_OUT") records"
 echo "   $VOTES_OUT  : $(wc -l < "$VOTES_OUT") vote records"
 echo "   intermediate files in $WORK (safe to delete)"
-echo ">> agreement stats:  ${RUN[*]} $HERE/agreement.py --votes $VOTES_OUT"
+echo ">> agreement stats:  ${RUN[*]} $HERE/agreement.py --config_path $CONFIG --votes $VOTES_OUT"

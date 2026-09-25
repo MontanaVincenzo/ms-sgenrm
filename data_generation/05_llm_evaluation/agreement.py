@@ -15,10 +15,13 @@ import argparse
 import json
 import math
 import statistics
+import sys
 from collections import Counter
 from pathlib import Path
 
-MODEL = "Qwen/Qwen3.6-35B-A3B-FP8"
+import yaml
+
+MODEL = None  # the judge model (data_generation.llm_model), set in main()
 
 # Categorical / boolean fields to measure (free-text ``notes`` excluded).
 FIELD_PATHS = (
@@ -132,16 +135,32 @@ def compute_stats(records: list[dict]) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--config_path", required=True)
     parser.add_argument(
         "--votes",
-        default="/home/vmontana/synthetic_data_generation/src/data/dataset_eval_votes.jsonl",
-        help="raw verdict sets from evaluate.py --votes-output",
+        default=None,
+        help="raw verdict sets from evaluate.py --votes-output (default: <data_dir>/<votes_output_file>)",
     )
-    parser.add_argument(
-        "--output",
-        default="/home/vmontana/synthetic_data_generation/src/data/agreement_stats.json",
-    )
+    parser.add_argument("--output", default=None, help="default: <data_dir>/<agreement_output_file>")
     args = parser.parse_args()
+
+    try:
+        with open(args.config_path, 'r') as f:
+            config = yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"Error: Config file '{args.config_path}' not found", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"Error parsing YAML file: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Relative paths in the config are relative to the repo root (the folder containing config.yaml).
+    data_config = config["data_generation"]
+    data_dir = Path(args.config_path).resolve().parent / data_config["data_dir"]
+    args.votes = args.votes or data_dir / data_config["votes_output_file"]
+    args.output = args.output or data_dir / data_config["agreement_output_file"]
+    global MODEL
+    MODEL = data_config["llm_model"]  # the judge model, recorded in the stats
 
     lines = Path(args.votes).read_text(encoding="utf-8").splitlines()
     records = [json.loads(line) for line in lines if line.strip()]

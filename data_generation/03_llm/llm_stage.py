@@ -1,4 +1,5 @@
 import json
+import os
 import random
 import sys
 from argparse import ArgumentParser
@@ -189,6 +190,10 @@ if __name__ == "__main__":
     except yaml.YAMLError as e:
         print(f"Error parsing YAML file: {e}", file=sys.stderr)
         sys.exit(1)
+
+    # Paths in the config and in the dataset are relative to the repo root.
+    os.chdir(Path(args.config_path).resolve().parent)
+    config = config["data_generation"]
 
     data_dir = Path(config["data_dir"])
     args.input = data_dir / config["asr_output_file"]

@@ -11,17 +11,20 @@ This script rewrites `base_model.model.model.` -> `base_model.model.thinker.mode
 in every tensor key. vLLM then strips `base_model.model.`, its `hf_to_vllm_mapper`
 turns `thinker.model.` into `language_model.model.`, and the module matches.
 
-Usage:
-    python convert_adapter_for_vllm.py ./qwen-omni-thinker-sft/checkpoint-290 \
-        ./qwen-omni-thinker-sft-vllm
+Usage (paths come from the `generative_rm` section of config.yaml):
+    python convert_adapter_for_vllm.py --config_path config.yaml [--level C] [--src <adapter dir>]
 """
 
 import argparse
 import json
 import shutil
+import sys
 from pathlib import Path
 
+import yaml
 from safetensors.torch import load_file, save_file
+
+from utils.create_templates import LEVELS
 
 OLD_PREFIX = "base_model.model.model."
 NEW_PREFIX = "base_model.model.thinker.model."
@@ -41,11 +44,36 @@ COPY_FILES = (
 EXPLICIT_TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
 
 
-def main():
+def parse_args():
     ap = argparse.ArgumentParser()
-    ap.add_argument("src", type=Path, help="adapter dir from sft.py")
-    ap.add_argument("dst", type=Path, help="output dir for the vLLM-ready adapter")
+    ap.add_argument("--config_path", required=True)
+    ap.add_argument("--level", choices=LEVELS, default=None, help="override generative_rm.level from the config")
+    ap.add_argument("--src", type=Path, default=None,
+                    help="adapter dir to convert, e.g. a checkpoint-N subfolder "
+                         "(default: <generative_rm.output_dir>-level<LEVEL>)")
     args = ap.parse_args()
+
+    try:
+        with open(args.config_path, 'r') as f:
+            config = yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"Error: Config file '{args.config_path}' not found", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"Error parsing YAML file: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Relative paths in the config are relative to the repo root (the folder containing config.yaml).
+    repo_root = Path(args.config_path).resolve().parent
+    sft_config = config["generative_rm"]
+    level = args.level or sft_config["level"]
+    args.src = args.src or repo_root / f"{sft_config['output_dir']}-level{level}"
+    args.dst = repo_root / f"{sft_config['vllm_adapter_dir']}-level{level}"
+    return args
+
+
+def main():
+    args = parse_args()
 
     src_weights = args.src / "adapter_model.safetensors"
     if not src_weights.is_file():

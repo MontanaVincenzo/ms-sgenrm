@@ -98,12 +98,15 @@ def _target_json(overall_evaluation: dict) -> str:
     return json.dumps(overall_evaluation, ensure_ascii=False, indent=2)
 
 
-def build_dataset(input_file, audio_dir=None, level: str = "C") -> Dataset:
+def build_dataset(input_file, audio_dir=None, level: str = "C", root_dir=None) -> Dataset:
     """One row per pipeline that has an ASR hypothesis, an LLM answer and a target.
 
     `level` controls how much of `overall_evaluation` becomes the training target:
     A = overall_score only, B = A + overall_notes, C = B + per-stage assessments
     and the compounding (error-propagation) analysis.
+
+    Audio paths: with `audio_dir`, each file is looked up by basename in that one folder;
+    otherwise the stored path is used, resolved against `root_dir` when it is relative.
     """
     if level not in LEVELS:
         raise ValueError(f"level must be one of {LEVELS}, got {level!r}")
@@ -111,13 +114,17 @@ def build_dataset(input_file, audio_dir=None, level: str = "C") -> Dataset:
     with open(input_file, encoding="utf-8") as f:
         records = [json.loads(line) for line in f if line.strip()]
     audio_dir = Path(audio_dir) if audio_dir else None
+    root_dir = Path(root_dir) if root_dir else Path()
+
+    def resolve(raw):
+        return audio_dir / Path(raw).name if audio_dir else root_dir / raw  # absolute raw paths win over root_dir
 
     rows = []
     for rec in records:
         raw_audio = rec["input_request"]["audio_path"]
         if not raw_audio:
             continue
-        audio_path = audio_dir / Path(raw_audio).name if audio_dir else raw_audio
+        audio_path = str(resolve(raw_audio))
 
         for pk in PIPELINE_KEYS:
             stage = rec.get(pk)
@@ -133,7 +140,7 @@ def build_dataset(input_file, audio_dir=None, level: str = "C") -> Dataset:
             if target is None:
                 continue
 
-            tts_out = audio_dir / Path(stage["tts"]["output"]).name if audio_dir else Path(stage["tts"]["output"])
+            tts_out = resolve(stage["tts"]["output"])
             if not tts_out.is_file():
                 continue
             rows.append(

@@ -114,6 +114,10 @@ if __name__ == "__main__":
         print(f"Error parsing YAML file: {e}", file=sys.stderr)
         sys.exit(1)
 
+    # Paths in the config and in the dataset (e.g. "data/input_audios_original/x.wav") are relative to the repo root.
+    os.chdir(Path(args.config_path).resolve().parent)
+    config = config["data_generation"]
+
     data_dir = Path(config["data_dir"])
     dataset_path = data_dir / config["input_request_output_file"]
 

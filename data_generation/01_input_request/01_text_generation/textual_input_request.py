@@ -8,6 +8,7 @@ from vllm.sampling_params import StructuredOutputsParams
 import copy
 from argparse import ArgumentParser
 from pathlib import Path
+import os
 import sys
 import yaml
 
@@ -228,7 +229,7 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("--num_samples", type=int, required=True, help="Number of samples to generate")
-    parser.add_argument("--config-path", required=True)
+    parser.add_argument("--config_path", "--config-path", dest="config_path", required=True)
     args = parser.parse_args()
 
     try:
@@ -240,6 +241,10 @@ if __name__ == "__main__":
     except yaml.YAMLError as e:
         print(f"Error parsing YAML file: {e}", file=sys.stderr)
         sys.exit(1)
+
+    # Paths in the config and in the dataset (e.g. "data/input_audios_original/x.wav") are relative to the repo root.
+    os.chdir(Path(args.config_path).resolve().parent)
+    config = config["data_generation"]
 
     args.data_dir = Path(config["data_dir"])
     args.input_request_output_file = config["input_request_output_file"]

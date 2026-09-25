@@ -12,7 +12,7 @@ from argparse import ArgumentParser
 import gc, torch
 import yaml
 import sys
-with open("/home/vmontana/synthetic_data_generation/src/asr/prompts/asr_perturbation.prompt", 'r') as f: 
+with open(Path(__file__).resolve().parent / "prompts" / "asr_perturbation.prompt", 'r') as f:
     ASR_PERTURBATION_PROMPT = f.read()
 
 MODIF_LEVEL = [
@@ -268,6 +268,10 @@ if __name__ == "__main__":
     except yaml.YAMLError as e:
         print(f"Error parsing YAML file: {e}", file=sys.stderr)
         sys.exit(1)
+
+    # Paths in the config and in the dataset (e.g. "data/input_audios_original/x.wav") are relative to the repo root.
+    os.chdir(Path(args.config_path).resolve().parent)
+    config = config["data_generation"]
 
     data_dir = Path(config["data_dir"])
     input_file = data_dir / config["input_request_output_file"]

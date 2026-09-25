@@ -17,6 +17,7 @@ fractions can differ slightly from the targets; they are printed at the end.
 
 import argparse
 import json
+import os
 import random
 import sys
 from collections import defaultdict
@@ -48,6 +49,8 @@ def parse_args():
         print(f"Error parsing YAML file: {e}", file=sys.stderr)
         sys.exit(1)
 
+    # Paths in the config and in the dataset (e.g. "data/input_audios_original/x.wav") are relative to the repo root.
+    os.chdir(Path(args.config_path).resolve().parent)
     data_config = config["data_generation"]
     split_config = data_config["split"]
     data_dir = Path(data_config["data_dir"])

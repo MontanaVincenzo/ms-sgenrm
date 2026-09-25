@@ -38,14 +38,15 @@ TASK_TYPE = "VoiceDesign"
 
 ADD_WORDS_INSTR = "Insert extra words into the target text (such as filler words like \"um\", \"you know\", extra adjectives, stutters or out of context words) to test how the TTS handles text changes and disfluencies."
 OMITT_WORDS_INSTR ="Remove words from the target text (such as dropping articles, prepositions, or key words) to test how the TTS handles incomplete or telegraphic text."
-with open("/home/vmontana/synthetic_data_generation/src/tts/prompts/style_perturbation/system.prompt", 'r') as f: 
+PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
+with open(PROMPTS_DIR / "style_perturbation" / "system.prompt", 'r') as f:
     STYLE_PERTURBATION_SYSTEM_PROMPT = f.read()
-with open("/home/vmontana/synthetic_data_generation/src/tts/prompts/style_perturbation/user.prompt", 'r') as f: 
+with open(PROMPTS_DIR / "style_perturbation" / "user.prompt", 'r') as f:
     STYLE_PERTURBATION_USER_PROMPT = f.read()
 
-with open("/home/vmontana/synthetic_data_generation/src/tts/prompts/text_perturbation/system.prompt", 'r') as f: 
+with open(PROMPTS_DIR / "text_perturbation" / "system.prompt", 'r') as f:
     TEXT_PERTURBATION_SYSTEM_PROMPT = f.read()
-with open("/home/vmontana/synthetic_data_generation/src/tts/prompts/text_perturbation/user.prompt", 'r') as f: 
+with open(PROMPTS_DIR / "text_perturbation" / "user.prompt", 'r') as f:
     TEXT_PERTURBATION_USER_PROMPT = f.read()
 
 REQUEST_SCHEMA_STYLE = {
@@ -511,7 +512,9 @@ def parse_args():
         help="Output directory for generated wav files (default: data/output_audio).",
     )
     parser.add_argument(
+        "--config_path",
         "--config-path",
+        dest="config_path",
         required=True,
         help="Path to the pipeline YAML config.",
     )
@@ -563,6 +566,10 @@ if __name__ == "__main__":
     except yaml.YAMLError as e:
         print(f"Error parsing YAML file: {e}", file=sys.stderr)
         sys.exit(1)
+
+    # Paths in the config and in the dataset (e.g. "data/output_audio/x.wav") are relative to the repo root.
+    os.chdir(Path(args.config_path).resolve().parent)
+    config = config["data_generation"]
 
     data_dir = Path(config["data_dir"])
     args.input = data_dir / config["llm_output_file"]

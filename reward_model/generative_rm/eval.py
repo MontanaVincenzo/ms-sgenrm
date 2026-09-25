@@ -1,4 +1,10 @@
-"""Run the LoRA-tuned Qwen2.5-Omni evaluator over `data/eval_data.jsonl` with vLLM.
+"""Run the LoRA-tuned Qwen2.5-Omni evaluator over a data split with vLLM.
+
+Settings come from the `generative_rm` section of config.yaml (`eval` block for the
+split, results folder and vLLM engine settings):
+
+    python eval.py --config_path config.yaml [--level C] [--split eval] [--no_lora]
+
 
 For every pipeline of every record we feed the model the same prompt used in
 training -- (spoken request audio, ASR transcription, LLM answer) -- and store the
@@ -14,7 +20,7 @@ Output rows (one per input record):
         "pipeline1": {
             "asr": <transcription>, "llm": <answer>, "tts": <audio_path>,
             "perturbation": {"asr": <type|None>, "llm": <type|None>, "tts": <type|None>},
-            "gt_evaluation": <dict from --input>, "model_evaluation": <dict>,
+            "gt_evaluation": <dict from the input split>, "model_evaluation": <dict>,
         },
         "pipeline2": {...},
     }
@@ -23,16 +29,18 @@ Output rows (one per input record):
 unparseable it is stored as {"_raw": <text>, "_parse_error": true}.
 
 After generation the script scores the predicted `overall_score` against the
-ground-truth `overall_score` carried in `--input` and derives a pairwise
+ground-truth `overall_score` carried in the input split and derives a pairwise
 (pipeline1 vs pipeline2) preference accuracy. All of it is written to
-`evaluation.json` next to `--output`.
+`<split>_<level|base>_stats.json` next to the output file.
 """
 
 import argparse
 import json
+import sys
 from collections import Counter
 from pathlib import Path
 
+import yaml
 from qwen_omni_utils import process_mm_info
 from transformers import Qwen2_5OmniProcessor
 from vllm import LLM, SamplingParams
@@ -40,7 +48,6 @@ from vllm.lora.request import LoRARequest
 
 from utils.create_templates import LEVELS, PIPELINE_KEYS, build_conversation
 
-BASE_MODEL = "Qwen/Qwen2.5-Omni-7B"
 AUDIO_SAMPLE_RATE = 16000  # process_mm_info resamples every clip to 16 kHz
 
 # Some (mostly base-model) generations report the score as a word rather than a
@@ -56,29 +63,52 @@ TEXT_SCORE_MAP = {
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--input", default="data/eval_data.jsonl")
-    p.add_argument("--output", default="results/trained_model.jsonl")
-    p.add_argument("--stats_output", default=None,
-                   help="path for the statistics JSON (default: <output dir>/evaluation.json)")
-    p.add_argument("--adapter", default="./qwen-omni-thinker-sft-vllm",
-                   help="LoRA adapter dir; pass --no_lora to evaluate the base model")
+    p.add_argument("--config_path", required=True)
+    p.add_argument("--level", choices=LEVELS, default=None,
+                   help="override generative_rm.level; must match the level the adapter was trained with")
+    p.add_argument("--split", choices=["train", "eval", "val"], default=None,
+                   help="override generative_rm.eval.split")
+    p.add_argument("--adapter", default=None,
+                   help="LoRA adapter dir (default: <generative_rm.vllm_adapter_dir>-level<LEVEL>)")
     p.add_argument("--no_lora", action="store_true", help="run the base model without any adapter")
-    p.add_argument("--level", choices=LEVELS, default="C",
-                   help="must match the grounding level the --adapter was trained with (see sft.py --level)")
-    p.add_argument("--base_model", default=BASE_MODEL)
-    p.add_argument("--max_new_tokens", type=int, default=2048)
     p.add_argument("--limit", type=int, default=None, help="only the first N records")
-    p.add_argument("--audio_dir", default=None, help="prefix for audio_path basenames if not absolute")
     p.add_argument("--overwrite", action="store_true", help="ignore any existing output and start fresh")
     p.add_argument("--stats_only", action="store_true",
-                   help="skip generation, just (re)compute evaluation.json from an existing --output")
-    # vLLM engine knobs
-    p.add_argument("--device", default="cuda:0")
-    p.add_argument("--max_model_len", type=int, default=8192)
-    p.add_argument("--max_num_seqs", type=int, default=16)
-    p.add_argument("--gpu_memory_utilization", type=float, default=0.85)
-    p.add_argument("--seed", type=int, default=0)
-    return p.parse_args()
+                   help="skip generation, just (re)compute the statistics from an existing output")
+    args = p.parse_args()
+
+    try:
+        with open(args.config_path, 'r') as f:
+            config = yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"Error: Config file '{args.config_path}' not found", file=sys.stderr)
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"Error parsing YAML file: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    sft_config = config["generative_rm"]
+    eval_config = sft_config["eval"]
+    data_config = config["data_generation"]
+
+    # Relative paths (config paths and the audio paths stored in the jsonl, e.g. "data/input_audios_original/x.wav")
+    # are relative to the repo root, i.e. the folder containing config.yaml.
+    args.repo_root = Path(args.config_path).resolve().parent
+    args.level = args.level or sft_config["level"]
+    args.split = args.split or eval_config["split"]
+    args.base_model = sft_config["model_id"]
+    args.max_lora_rank = sft_config["lora"]["r"]
+    args.adapter = (Path(args.adapter).resolve() if args.adapter
+                    else args.repo_root / f"{sft_config['vllm_adapter_dir']}-level{args.level}")
+    args.input = args.repo_root / data_config["data_dir"] / data_config["split"][f"{args.split}_file"]
+    run_tag = "base" if args.no_lora else f"level{args.level}"
+    results_dir = args.repo_root / eval_config["results_dir"]
+    args.output = results_dir / f"{args.split}_{run_tag}.jsonl"
+    args.stats_output = results_dir / f"{args.split}_{run_tag}_stats.json"
+    for key in ("max_new_tokens", "max_model_len", "max_num_seqs", "gpu_memory_utilization", "device", "seed"):
+        setattr(args, key, eval_config[key])
+    args.gpu_memory_utilization = float(args.gpu_memory_utilization)
+    return args
 
 
 def _sanitize(conversation):
@@ -113,8 +143,8 @@ def extract_json(text: str) -> dict | None:
     return best
 
 
-def resolve_audio(raw_path: str, audio_dir: str | None) -> str:
-    return str(Path(audio_dir) / Path(raw_path).name) if audio_dir else raw_path
+def resolve_audio(raw_path: str, repo_root: Path) -> Path:
+    return repo_root / raw_path  # absolute raw paths are kept as-is
 
 
 def build_request(processor, input_audio_path, asr_text, llm_text, tts_audio_path, level: str = "C") -> dict:
@@ -142,7 +172,7 @@ def build_llm(args, audio_limit: int = 2) -> LLM:
         enforce_eager=True,
         limit_mm_per_prompt={"audio": audio_limit},
         enable_lora=not args.no_lora,
-        max_lora_rank=16,
+        max_lora_rank=args.max_lora_rank,
         seed=args.seed,
     )
 
@@ -352,7 +382,7 @@ def generate(args, records, out_path: Path) -> None:
                 "audio_path": rec["input_request"]["audio_path"],
             },
         }
-        audio_path = resolve_audio(rec["input_request"]["audio_path"], args.audio_dir)
+        audio_path = str(resolve_audio(rec["input_request"]["audio_path"], args.repo_root))
         for pk in PIPELINE_KEYS:
             stage = rec.get(pk)
             if not stage:
@@ -373,7 +403,7 @@ def generate(args, records, out_path: Path) -> None:
             }
             if not asr_out or not llm_out or not tts_out:
                 continue
-            tts_out = args.audio_dir / Path(stage["tts"]["output"]).name if args.audio_dir else Path(stage["tts"]["output"])
+            tts_out = resolve_audio(stage["tts"]["output"], args.repo_root)
             if not tts_out.is_file():
                 continue
             work.append((ann_id, pk))
@@ -430,11 +460,7 @@ def main(args):
         print("no output file to score; skipping statistics")
         return
 
-    stats_path = (
-        Path(args.stats_output) if args.stats_output
-        else out_path.parent / "evaluation.json"
-    )
-    compute_statistics(args.input, out_path, stats_path)
+    compute_statistics(args.input, out_path, args.stats_output)
 
 
 if __name__ == "__main__":

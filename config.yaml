@@ -10,6 +10,8 @@ data_generation:
   llm_output_file: "dataset_llm.jsonl"
   tts_output_file: "dataset_tts.jsonl"
   final_output_file: "dataset_eval.jsonl"
+  votes_output_file: "dataset_eval_votes.jsonl"      # raw judge votes (05_llm_evaluation/evaluate.py)
+  agreement_output_file: "agreement_stats.json"      # judge self-consistency (05_llm_evaluation/agreement.py)
 
   # 06_split_data: whole topics are assigned to one split; fractions must sum to 1
   split:
@@ -33,5 +35,34 @@ bradley_terry:
   model_id: "Qwen/Qwen2.5-Omni-7B"
   batch_size: 16
   label_smoothing: 0.1
+
+generative_rm:
+  model_id: "Qwen/Qwen2.5-Omni-7B"
+  level: "C"            # A = overall_score, B = A + overall_notes, C = B + per-stage + error propagation
+  output_dir: "reward_model/generative_rm/qwen-omni-thinker-sft"  # "-level<LEVEL>" is appended
+  epochs: 1.0
+  per_device_batch_size: 2
+  grad_accum: 4
+  learning_rate: 1.0e-4
+  warmup_steps: 10
+  seed: 0
+  use_wandb: true
+  wandb_project: "src"
+  run_name: null        # null -> output_dir basename
+  lora:
+    r: 16
+    alpha: 32
+    dropout: 0.05
+  # convert_adapter_for_vllm.py: output_dir-level<LEVEL> -> vllm_adapter_dir-level<LEVEL>
+  vllm_adapter_dir: "reward_model/generative_rm/qwen-omni-thinker-sft-vllm"
+  eval:                 # eval.py (vLLM)
+    split: "eval"       # which data_generation.split file to evaluate on: train | eval | val
+    results_dir: "reward_model/generative_rm/results"   # writes <split>_level<LEVEL>.jsonl + _stats.json
+    max_new_tokens: 2048
+    max_model_len: 8192
+    max_num_seqs: 16
+    gpu_memory_utilization: 0.85
+    device: "cuda:0"
+    seed: 0
 
   
