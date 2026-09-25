@@ -41,8 +41,7 @@
   },
   "pairwise_preference": {
     "n_pairs_scored": 100,
-    "pairwise_accuracy": 0.68,
-    "pairwise_accuracy_excluding_gt_ties": 0.7808219178082192,
+    "pairwise_accuracy": 0.7808219178082192,
     "gt_preference_distribution": {
       "tie": 27,
       "pipeline1": 44,
