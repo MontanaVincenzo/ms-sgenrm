@@ -64,7 +64,6 @@ Run the stages in order from the repo root. Each stage reads the previous stage'
 
 Useful extras:
 - **Quick test runs:** stages 03–06 accept `--limit N` to process only the first N samples.
-- **ASR wrapper:** `data_generation/02_asr/run.sh` runs stage 02 with the vLLM environment variables this machine needs. Extra flags are passed through, and `CONFIG=...` selects another config.
 - **Judge settings:** stage 05 also takes `--votes` (default 10) and `--temperature` (default 0.7).
 - **Judge on two GPUs:** `data_generation/05_llm_evaluation/run_eval_2gpu.sh` splits the dataset in half and judges each half on its own GPU. Its file paths come from the config.
 - **Judge consistency:** `data_generation/.venv/bin/python data_generation/05_llm_evaluation/agreement.py --config_path config.yaml` reports how consistent the judge is with itself. It writes to `data_generation.agreement_output_file`.
