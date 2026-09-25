@@ -1,4 +1,4 @@
-# ms-sgenrm
+# MULTI-STAGE GENERATIVE REWARD MODELING VIA CONTROLLED SUPERVISION
 
 Synthetic data generation and reward-model training for spoken ASR → LLM → TTS pipelines.
 
