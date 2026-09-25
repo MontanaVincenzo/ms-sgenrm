@@ -1,4 +1,4 @@
-# MULTI-STAGE GENERATIVE REWARD MODELING VIA CONTROLLED SUPERVISION
+# Multi-Stage Generative RM Via Controlled Supervision
 
 Synthetic data generation and reward-model training for spoken ASR → LLM → TTS pipelines.
 
