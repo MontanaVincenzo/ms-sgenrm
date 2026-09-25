@@ -1,0 +1,10 @@
+{
+    "summary": {
+        "pairwise_accuracy": 0.6947,
+        "bt_loss": 0.5283,
+        "mean_margin": 0.973,
+        "std_margin": 1.5594,
+        "mean_reward_chosen": 1.7072,
+        "mean_reward_rejected": 0.7342
+    }
+}

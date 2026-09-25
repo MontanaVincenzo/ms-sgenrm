@@ -35,4 +35,7 @@ data/*
 !data/topics/
 !data/topics/topics.jsonl
 data_generation/01_input_request/02_tts_synthesis/Orpheus-TTS
-
+!reward_model/bradley_terry/results/performance.jsonl
+!reward_model/generative_rm/results/levelA/performance.jsonl
+!reward_model/generative_rm/results/levelB/performance.jsonl
+!reward_model/generative_rm/results/levelC/performance.jsonl
